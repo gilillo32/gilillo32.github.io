@@ -8,6 +8,11 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
         #map { height: 100vh; width: 100%; }
         .locate-button {
             position: absolute;
@@ -25,6 +30,17 @@
             color: #008fdc;
             transform: translate(-12px, -12px);
         }
+        .refresh-button {
+            position: absolute;
+            top: 60px;
+            left: 10px;
+            z-index: 1000;
+            background-color: white;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+        }
         .water-drop-icon {
             font-size: 24px;
             color: #0c3f5c;
@@ -33,7 +49,8 @@
     </style>
 </head>
 <body>
-<button class="locate-button" onclick="returnToUserLocation()">Volver a mi ubicación</button>
+<button class="locate-button" onclick="returnToUserLocation()"><span class="material-icons">my_location</span></button>
+<button class="refresh-button" onclick="onMapMove()"><span class="material-icons">refresh</span></button>
 <div id="map"></div>
 <script>
     const map = L.map('map', {
@@ -126,7 +143,7 @@
                 map.removeLayer(sourcesLayer);
             }
             const zoomLevel = map.getZoom();
-            if (data.elements.length < 100) {
+            if (data.elements.length < 150) {
 
                 const sources = data.elements.map(source => {
                     return L.marker([source.lat, source.lon], { icon: waterDropIcon }).bindPopup('Fuente de agua potable');
@@ -141,7 +158,7 @@
 
     function onMapMove() {
         const zoomLevel = map.getZoom();
-        if (zoomLevel >= 13) {  // Limitar carga de fuentes a zoom cercanos
+        if (zoomLevel >= 10) {  // Limitar carga de fuentes a zoom cercanos
             const bbox = map.getBounds();
             loadSources(bbox);
         }
