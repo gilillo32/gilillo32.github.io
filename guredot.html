@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa con Permiso de Ubicación</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        #map { height: 100vh; width: 100%; }
+        .locate-button {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background-color: white;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .location-marker-icon {
+            font-size: 24px;
+            color: #008fdc;
+            transform: translate(-12px, -12px);
+        }
+        .water-drop-icon {
+            font-size: 24px;
+            color: #0c3f5c;
+            transform: translate(-12px, -12px);
+        }
+    </style>
+</head>
+<body>
+<button class="locate-button" onclick="returnToUserLocation()">Volver a mi ubicación</button>
+<div id="map"></div>
+<script>
+    const map = L.map('map', {
+        zoomControl: false
+    }).setView([40.730610, -73.935242], 13);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    }).addTo(map);
+
+    let userLocation;
+    let userMarker;
+
+    let sourcesLayer = L.layerGroup().addTo(map);
+
+    const locationMarkerIcon = L.divIcon({
+        html: '<span class="material-icons location-marker-icon">fiber_manual_record</span>',
+        className: '',
+        iconSize: [24, 24]
+    });
+
+    function requestUserLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((position) => {
+                const userLat = position.coords.latitude;
+                const userLon = position.coords.longitude;
+                userLocation = [userLat, userLon];
+                map.setView(userLocation, 13);
+
+                if (!userMarker) {
+                    userMarker = L.marker(userLocation, { icon: locationMarkerIcon }).addTo(map);
+                } else {
+                    userMarker.setLatLng(userLocation);
+                }
+
+                // Actualizar la posición del marcador en tiempo real
+                navigator.geolocation.watchPosition((position) => {
+                    const newLat = position.coords.latitude;
+                    const newLon = position.coords.longitude;
+                    userLocation = [newLat, newLon];
+                    userMarker.setLatLng(userLocation);
+                });
+
+                // Guardar permiso en localStorage
+                localStorage.setItem("locationPermission", "granted");
+            }, (error) => {
+                console.error("Acceso a la ubicación denegado:", error);
+                localStorage.setItem("locationPermission", "denied");
+            });
+        } else {
+            console.warn("Geolocalización no es compatible con este navegador.");
+        }
+    }
+
+    function checkLocationPermission() {
+        const permission = localStorage.getItem("locationPermission");
+        if (permission === "granted") {
+            // Si el permiso es "granted", cargamos directamente la ubicación
+            requestUserLocation();
+        } else if (permission === "denied") {
+            // Si el permiso es "denied", no hacemos nada
+            console.warn("Permiso de ubicación previamente denegado.");
+        } else {
+            // Si no hay registro en localStorage, pedimos permiso
+            requestUserLocation();
+        }
+    }
+
+    function returnToUserLocation() {
+        if (userLocation) {
+            map.setView(userLocation, 13);
+        } else {
+            console.warn("Ubicación del usuario no disponible.");
+        }
+    }
+
+    const waterDropIcon = L.divIcon({
+        html: '<span class="material-icons">water_drop</span>',
+        className: 'water-drop-icon',
+        iconSize: [24, 24]
+    });
+
+    async function loadSources(bbox) {
+        const url = `https://overpass-api.de/api/interpreter?data=[out:json];node[amenity=drinking_water](${bbox.getSouth()},${bbox.getWest()},${bbox.getNorth()},${bbox.getEast()});out;`;
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            if (sourcesLayer) {
+                map.removeLayer(sourcesLayer);
+            }
+            const zoomLevel = map.getZoom();
+            if (data.elements.length < 100) {
+
+                const sources = data.elements.map(source => {
+                    return L.marker([source.lat, source.lon], { icon: waterDropIcon }).bindPopup('Fuente de agua potable');
+                });
+
+                sourcesLayer = L.layerGroup(sources).addTo(map);
+            }
+        } catch (error) {
+            console.error("Error al cargar las fuentes de agua:", error);
+        }
+    }
+
+    function onMapMove() {
+        const zoomLevel = map.getZoom();
+        if (zoomLevel >= 13) {  // Limitar carga de fuentes a zoom cercanos
+            const bbox = map.getBounds();
+            loadSources(bbox);
+        }
+        else {
+            if (sourcesLayer) {
+                map.removeLayer(sourcesLayer);
+            }
+        }
+    }
+
+    map.on('moveend', onMapMove);
+
+    checkLocationPermission();
+</script>
+</body>
+</html>
