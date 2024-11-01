@@ -144,7 +144,7 @@
             }
             // Limitar la carga de fuentes a 150 elementos
 
-            const elements = data.elements.slice(0, 175);
+            const elements = data.elements.slice(0, 50);
             const sources = elements.map(source => {
                 return L.marker([source.lat, source.lon], { icon: waterDropIcon }).bindPopup('Fuente de agua potable');
             });
