@@ -110,16 +110,6 @@
 <div id="map"></div>
 <script>
 
-  function showSpinner() {
-    const spinner = document.getElementById('loading-spinner');
-    spinner.style.display = 'flex';
-  }
-
-  function hideSpinner() {
-    const spinner = document.getElementById('loading-spinner');
-    spinner.style.display = 'none';
-  }
-
   const map = L.map('map', {
     zoomControl: false
   }).setView([43.26271, -2.92528], 13);
@@ -130,8 +120,6 @@
 
   let userLocation;
   let userMarker;
-
-  let sourcesLayer = L.layerGroup().addTo(map);
 
   const locationMarkerIcon = L.divIcon({
     html: '<span class="material-icons location-marker-icon">fiber_manual_record</span>',
@@ -153,7 +141,6 @@
           userMarker.setLatLng(userLocation);
         }
 
-        // Actualizar la posición del marcador en tiempo real
         navigator.geolocation.watchPosition((position) => {
           const newLat = position.coords.latitude;
           const newLon = position.coords.longitude;
@@ -203,7 +190,6 @@
   const markersCluster = L.markerClusterGroup();
 
   async function loadSources(bbox) {
-    showSpinner();
     const url = `https://overpass-api.de/api/interpreter?data=[out:json];node[amenity=drinking_water](${bbox.getSouth()},${bbox.getWest()},${bbox.getNorth()},${bbox.getEast()});out;`;
     try {
       const response = await fetch(url);
@@ -219,7 +205,6 @@
       });
 
       map.addLayer(markersCluster);
-      hideSpinner();
     } catch (error) {
       console.error("Error al cargar las fuentes de agua:", error);
     }
